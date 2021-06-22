@@ -1,35 +1,32 @@
 /* eslint-disable prettier/prettier */
-import { Injectable, UnauthorizedException } from "@nestjs/common";
+import {
+  Injectable,
+  NotFoundException,
+  UnauthorizedException,
+} from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { Task } from "./entities/task.entity";
 import { TaskInterface } from "./entities/task.interface";
 import { TaskDto } from "./dto/create-task.dto";
 import { Request } from "express";
+import { TaskRepository } from "./task.repository";
 import { JwtService } from "@nestjs/jwt";
 
 @Injectable()
 export class TasksService {
   constructor(
-    @InjectRepository(Task) private readonly taskRepository: Repository<Task>,
+    @InjectRepository(TaskRepository)
+    private taskRepository: TaskRepository,
     private jwtService: JwtService
   ) {}
 
-  async create(createTaskDto: TaskDto, request: Request): Promise<Task> {
+  async createTask(createTaskDto: TaskDto, request: Request): Promise<Task> {
     try {
       const cookie = request.cookies["token"];
       const data = await this.jwtService.verifyAsync(cookie);
-
-      const { title, color, description } = createTaskDto;
-
-      const task = new Task();
-      task.title = title;
-      task.description = description;
-      task.color = color;
-      task.user_id = data["id"];
-      task.task_status_id = 1;
-
-      return await this.taskRepository.save(task);
+      if (data) {
+        return await this.taskRepository.createTask(createTaskDto, data);
+      }
     } catch (error) {
       throw new UnauthorizedException("Entered Details Failed");
     }
@@ -43,9 +40,11 @@ export class TasksService {
     try {
       const cookie = request.cookies["token"];
       const data = await this.jwtService.verifyAsync(cookie);
-      return await this.taskRepository.find({ user_id: data["id"] });
+      if (data) {
+        return await this.taskRepository.findTask(data);
+      }
     } catch (error) {
-      throw new UnauthorizedException("Not Authorized");
+      throw new UnauthorizedException("Entered Details Failed");
     }
   }
 
@@ -57,7 +56,11 @@ export class TasksService {
     return await this.taskRepository.update(id, updateTask);
   }
 
-  async remove(id: number) {
-    return await this.taskRepository.delete(id);
+  async deleteTask(id: number): Promise<void> {
+    const result = await this.taskRepository.delete(id);
+
+    if (result.affected === 0) {
+      throw new NotFoundException(`Task with ID "${id}" not found`);
+    }
   }
 }

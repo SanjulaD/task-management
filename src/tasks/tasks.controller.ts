@@ -24,8 +24,8 @@ export class TasksController {
 
   @Post()
   @UsePipes(ValidationPipe)
-  async create(@Body() task: TaskDto, @Req() request: Request) {
-    return this.tasksService.create(task, request);
+  async createTask(@Body() task: TaskDto, @Req() request: Request) {
+    return await this.tasksService.createTask(task, request);
   }
 
   @Get()
@@ -51,6 +51,6 @@ export class TasksController {
 
   @Delete(":id")
   async remove(@Param("id") id: number) {
-    return await this.tasksService.remove(+id);
+    return await this.tasksService.deleteTask(+id);
   }
 }
